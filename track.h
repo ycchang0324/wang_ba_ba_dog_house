@@ -1,8 +1,8 @@
-// File			  [track.h]
-// Author		  [Erik Kuo]
-// Synopsis		[Code used for tracking]
+// File        [track.h]
+// Author     [Erik Kuo]
+// Synopsis   [Code used for tracking]
 // Functions  [MotorWriting, tracking]
-// Modify		  [2020/03/27 Erik Kuo]
+// Modify     [2020/03/27 Erik Kuo]
 /***************************************************************************/
 
 #ifndef _TRACK_H_
@@ -14,8 +14,23 @@ int old_err = 0;
 int P_err;
 int I_err = 0;
 int D_err = 0;
-double Kd = 1;
+double Kd;
 double Ki = 1;
+double Ratio=0.97;//左輪弱化以平衡
+  int L3D;
+  int L2D;
+  int C0D;
+  int R3D;
+  int R2D;
+
+
+
+  int L3A;
+  int L2A;
+  int C0A;
+
+  int R2A;
+  int R3A;
 
 /*int MotorR_I1 = 6;
 int MotorR_I2 = 7;
@@ -24,6 +39,48 @@ int MotorL_I4 = 9;
 int MotorR_PWMR = 5;
 int MotorL_PWML = 10; */
 // initialize the left wheel
+void conversion(){
+  L3A = analogRead(L3);
+  L2A = analogRead(L2);
+  C0A = analogRead(C0);
+  R2A = analogRead(R2);
+  R3A = analogRead(R3);
+
+if(L3A > 70){
+    L3D = 1;
+  }
+  else{
+    L3D = 0;
+  }
+  
+  if(L2A > 70){
+    L2D = 1;
+  }
+  else{
+    L2D= 0;
+  }
+  if(C0A > 70){
+    C0D = 1;
+  }
+  else{
+    C0D = 0;
+  }
+
+  if(R2A > 70){
+    R2D = 1;
+  }
+  else{
+    R2D = 0;
+  }
+  
+  if(R3A > 70){
+    R3D = 1;
+  }
+  else{
+    R3D = 0;
+  }
+  
+}
 void rightForward()
 {
   digitalWrite(MotorR_I1,LOW);
@@ -54,8 +111,8 @@ void leftBackward()
 
 void moveForward()
 {
-  analogWrite(MotorR_PWMR,100);
-  analogWrite(MotorL_PWML,100);
+  analogWrite(MotorR_PWMR,78*0.98);
+  analogWrite(MotorL_PWML,78);
   leftForward();
   rightForward();
 }
@@ -72,14 +129,14 @@ void moveBackward()
 void turnLeftCenter()
 {
   analogWrite(MotorR_PWMR,100);
-  analogWrite(MotorL_PWML,100);
+  analogWrite(MotorL_PWML,120);
   leftBackward();
   rightForward();
 }
 
 void turnRightCenter()
 {
-  analogWrite(MotorR_PWMR,100);
+  analogWrite(MotorR_PWMR,120);
   analogWrite(MotorL_PWML,100);
   leftForward();
   rightBackward();
@@ -101,6 +158,7 @@ int extern _Tp;
 /*===========================import variable===========================*/
 
 // Write the voltage to motor.
+
 void MotorWriting(double vL, double vR) {
   // TODO: use L298N to control motor voltage & direction
 
@@ -152,80 +210,33 @@ void MotorWriting(double vL, double vR) {
 // compute the error
 int error(){
 
-  int L3D;
-  int L2D;
-  int L1D;
-  int R3D;
-  int R2D;
-  int R1D;
 
 
-  int L3A = analogRead(A0);
-  int L2A = analogRead(A1);
-  int L1A = analogRead(A2);
-  int R1A = analogRead(A3);
-  int R2A = analogRead(A4);
-  int R3A = analogRead(A5);
+  #ifdef DEBUG
   Serial.print("L3A: ");
   Serial.println(L3A);
    Serial.print("L2A: ");
   Serial.println(L2A);
-   Serial.print("L1A: ");
-  Serial.println(L1A);
-   Serial.print("R1A: ");
-  Serial.println(R1A);
+   Serial.print("C0A: ");
+  Serial.println(C0A);
    Serial.print("R2A: ");
   Serial.println(R2A);
    Serial.print("R3A: ");
   Serial.println(R3A);
   
+  
+  #endif
 
-
-  if(L3A > 70){
-    L3D = 1;
-  }
-  else{
-    L3D = 0;
-  }
-  if(L2A > 70){
-    L2D = 1;
-  }
-  else{
-    L2D= 0;
-  }
-  if(L1A > 70){
-    L1D = 1;
-  }
-  else{
-    L1D = 0;
-  }
-  if(R1A > 70){
-    R1D = 1;
-  }
-  else{
-    R1D = 0;
-  }
-  if(R2A > 70){
-    R2D = 1;
-  }
-  else{
-    R2D = 0;
-  }
-  if(R3A > 70){
-    R3D = 1;
-  }
-  else{
-    R3D = 0;
-  }
-  //int counter = L3D + L2D + L1D + R1D + R2D + R3D;
+  conversion();
+  //int counter = L3D + L2D + C0D + R2D + R3D;
   P_err = L3D * (-2) + L2D * (-1) + R2D * 1 + R3D * 2;
   //I_err = I_err + P_err;
-  //D_err = P_err - old_err;
+  D_err = P_err - old_err;
 
   old_err = P_err;
-
+  Kd = P_err/4;
   //double power = Kp*P_err + Ki*I_err + Kd*D_err;
-  double power = _Tp*P_err;
+  double power = _Tp*P_err + Kd*D_err;
 
   return power;
   /*
@@ -244,9 +255,9 @@ void tracking(){
     
     int vRAdj = 0;
     int vLAdj = 0;
-    int vR=60;
-    int vL=60;
-    int Error=error();
+    int vR=75;
+    int vL=75*Ratio;
+    int Error=error()*0.80;
 
     vRAdj = vR - Error;
     vLAdj = vL + Error;
@@ -256,9 +267,54 @@ void tracking(){
     Serial.print("right speed: ");
     Serial.println(vRAdj);
     #endif
-    
     MotorWriting(vLAdj,vRAdj);
+    
 }// tracking
+bool checknode(){
+conversion();
+  #ifdef DEBUG
+  delay(1000);
+    //Serial.print(L3D+L2D+L1D+R3D+R2D+R1D);
+    Serial.print("L3D: ");
+    Serial.println(L3D);
+    Serial.print("L2D: ");
+    Serial.println(L2D);
+    Serial.print("R3D: ");
+    Serial.println(R3D);
+    Serial.print("R2D: ");
+    Serial.println(R2D);
+    Serial.print("C0D: ");
+    Serial.println(C0D);
+    
+    #endif
+  if((L3D+L2D+C0D+R3D+R2D)>=3)
+    return true;
 
+  else 
+    return false;
+}
 
+bool findlineyet(char c){
+conversion();
+if(c=='R'){
+  if((R3D+R2D)>=1)
+    return false;
+  else 
+    return true;
+}
+if(c=='L'){
+  if((L3D+L2D)>=1)
+    return false;
+  else 
+    return true;
+}
+}
+bool findlineyet(){
+conversion();
+
+  if((L3D+L2D+R3D+R2D+C0D)>=1)
+    return false;
+  else 
+    return true;
+}
 #endif

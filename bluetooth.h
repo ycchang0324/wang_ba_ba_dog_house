@@ -1,9 +1,9 @@
 /***************************************************************************/
-// File			  [bluetooth.h]
-// Author		  [Erik Kuo]
-// Synopsis		[Code for bluetooth communication]
+// File        [bluetooth.h]
+// Author     [Erik Kuo]
+// Synopsis   [Code for bluetooth communication]
 // Functions  [ask_BT, send_msg, send_byte]
-// Modify		  [2020/03/27 Erik Kuo]
+// Modify     [2020/03/27 Erik Kuo]
 /***************************************************************************/
 
 /*if you have no idea how to start*/
@@ -21,67 +21,78 @@ enum BT_CMD {
 };
 
 char ask_BT_begin(){
-  static char val = ' ';
+  char val = ' ';
+
   if(BT.available()){
     val = BT.read();
+
     return val;
   }
+
+  return val;
 }
-BT_CMD ask_BT(char* command){
+BT_CMD ask_BT(char* command,char &dishNum, char &tableNum){
+    Serial.println("送餐囉");
     BT_CMD message=NOTHING;
-    char val;
-    static unsigned int j = 0;
-      while(val != 'e'){
+    char val = ' ';
+    for(int i = 0; i < 20 ; i++){
+      command[i] = ' ';
+    }
+     dishNum = ' ';
+     tableNum = ' ';
+    unsigned int j = 0;
+    unsigned int k = 0;
+    Serial.print("餐點數量: ");
+    while (!BT.available()){
+      ;
+    }
+    dishNum = BT.read();
+    BT.write('r');
+    
+    Serial.print(dishNum);
+    Serial.println("個");
+    Serial.print("過去路徑: ");
+      while(val != 'x'){
         if (BT.available()) {
           val = BT.read();
           command[ j ] = val;
+          Serial.print(val);
+          Serial.print(" ");
           j++;
+          
         }
-      }  
-    
-   
-      for(int i = 0; i < 100; i++)
-      {
-        Serial.print(command[i]);
-        Serial.print(" ");
       }
-  
-   
-    
-  
-  /*
-    char cmd = "";
-    if(BT.available()){
-      cmd = char(BT.read());
-      if(cmd == 'w')
-      {
-          message = FORWARD;
-      }
-      if(cmd == 'a')
-      {
-          message = LEFT;
-      }
-      if(cmd == 's')
-      {
-          message = BACKWARD;
-      }
-      if(cmd == 'd')
-      {
-          message = RIGHT;
-      }
-      cmd = "";
+      Serial.println();
+      val = ' ';
       
-      // TODO:
-      // 1. get cmd from SoftwareSerial object: BT
-      // 2. link bluetooth message to your own command type
-      #ifdef DEBUG
-      Serial.print("cmd : ");
-      Serial.println( cmd );
-      #endif
-      
+      BT.write('r');
+      Serial.print("桌號: ");
+      while (!BT.available()){
+      ;
     }
-    return message;
-    */
+        tableNum = BT.read();
+      
+      Serial.print(tableNum);
+      Serial.println("號桌");
+      BT.write('r');
+      Serial.print("回來路徑: ");
+      k=j;
+      while(val != 'y'){
+        if (BT.available()) {
+          val = BT.read();
+          command[ k ] = val;
+          Serial.print(val);
+          Serial.print(" ");
+          
+          k++;
+        }
+      }
+      Serial.println();
+      Serial.println();
+      val = ' ';  
+    BT.write('r');  
+     
+
 }// ask_BT
 
 // send msg back through SoftwareSerial object: BT
@@ -96,16 +107,20 @@ void send_msg(const char& msg)
 // send UID back through SoftwareSerial object: BT
 void send_byte(byte *id, byte& idSize) {
 
+  
   for (byte i = 0; i < idSize; i++) {  // Send UID consequently.
-    //BT.write(id[i]);
-    Serial.print(id[i],HEX);
+    BT.write(id[i]);
+    
+    Serial.print(id[i], HEX);
   }
+  
   #ifdef DEBUG
   Serial.print("Sent id: ");
   for (byte i = 0; i < idSize; i++) {  // Show UID consequently.
     Serial.print(id[i], HEX);
   }
   Serial.println();
+  
   #endif
   for (byte i = 0; i < idSize; i++) {  // Send UID consequently.
     id[ i ] = 0;
